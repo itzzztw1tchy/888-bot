@@ -19,22 +19,13 @@ tree = bot.tree
 # ------------------- EVENTS -------------------
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
 
-    # 1. FAST SYNC (for testing in server)
     try:
-        guild = discord.Object(id=GUILD_ID)
-        synced = await tree.sync(guild=guild)
-        print(f"Guild sync complete: {len(synced)} commands")
+        synced = await bot.tree.sync()
+        print(f"Global sync complete: {len(synced)} commands")
     except Exception as e:
-        print(f"Guild sync failed: {e}")
-
-    # 2. GLOBAL SYNC (for DMs / long-term rollout)
-    try:
-        synced_global = await tree.sync()
-        print(f"Global sync complete: {len(synced_global)} commands")
-    except Exception as e:
-        print(f"Global sync failed: {e}")
+        print(f"Sync failed: {e}")
 
 import os
 import traceback
