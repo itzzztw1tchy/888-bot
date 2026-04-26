@@ -59,13 +59,11 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         return
 
     if amount > 50:
-        await interaction.response.send_message("Max is 50 for stability.", ephemeral=True)
+        await interaction.response.send_message("Max is 50.", ephemeral=True)
         return
 
-    await interaction.response.defer(ephemeral=True)
-
-    await interaction.followup.send(
-        f"Starting {amount} messages...",
+    await interaction.response.send_message(
+        f"Starting spam of {amount} messages...",
         ephemeral=True
     )
 
@@ -75,43 +73,34 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.followup.send("No channel found.", ephemeral=True)
         return
 
-    # ------------------- SAFE RESOLUTION -------------------
-    try:
-        send_func = getattr(channel, "send", None)
+    async def spam_task():
+        try:
+            for i in range(amount):
+                await channel.send(message)
+                await asyncio.sleep(1.2)
 
-        if send_func is None:
+            await interaction.followup.send("Done.", ephemeral=True)
+
+        except discord.Forbidden:
             await interaction.followup.send(
-                "❌ This channel type cannot receive messages from bots.",
+                "❌ Missing permission to send messages here.",
                 ephemeral=True
             )
-            return
 
-        for i in range(amount):
-            await send_func(message)
-            await asyncio.sleep(1.2)
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "❌ Rate limited by Discord.",
+                ephemeral=True
+            )
 
-    except discord.Forbidden:
-        await interaction.followup.send(
-            "❌ Bot lacks Send Messages permission in this channel.",
-            ephemeral=True
-        )
-        return
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Error: {e}",
+                ephemeral=True
+            )
 
-    except discord.HTTPException:
-        await interaction.followup.send(
-            "❌ Rate limited or blocked by Discord.",
-            ephemeral=True
-        )
-        return
-
-    except Exception as e:
-        await interaction.followup.send(
-            f"❌ Unexpected error: {e}",
-            ephemeral=True
-        )
-        return
-
-    await interaction.followup.send("Done.", ephemeral=True)
+    # run in background so interaction doesn't stall
+    asyncio.create_task(spam_task())
 
     # ------------------- MAIN LOOP (FIXED LOGIC) -------------------
 
