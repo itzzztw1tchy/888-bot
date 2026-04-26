@@ -38,9 +38,9 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
             await channel.send(content)
             return True
         except discord.Forbidden:
-            await interaction.followup.send("error")
+            await interaction.followup.send(" ")
             return False
-   
+    else:
         try:
             await interaction.followup.send(content)
             return True
@@ -76,15 +76,21 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         return
 
     # ------------------- SERVER MODE -------------------
-    for i in range(amount):
+    if isinstance(channel, discord.TextChannel):
+        for i in range(amount):
             try:
-                await interaction.followup.send(message)
+                await channel.send(message)
                 await asyncio.sleep(1.2)
+
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    "❌ No permission to send messages here.",
+                    ephemeral=True
+                )
+                return
 
             except discord.HTTPException:
                 await asyncio.sleep(2)
-
-    await interaction.followup.send("Done.", ephemeral=True)
 
     # ------------------- DM / GC MODE -------------------
     else:
