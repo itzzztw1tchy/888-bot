@@ -27,7 +27,29 @@ async def on_ready():
         print(f'Failed to sync commands: {e}')
 
 
-# ------------------- /bspam (FIXED) -------------------
+# ------------------- 🔥 UNIVERSAL SEND WRAPPER -------------------
+async def safe_send(interaction: discord.Interaction, channel, content: str):
+    if channel is None:
+        await interaction.followup.send("No channel available.")
+        return False
+
+    if isinstance(channel, discord.TextChannel):
+        try:
+            await channel.send(content)
+            return True
+        except discord.Forbidden:
+            await interaction.followup.send(" ")
+            return False
+    else:
+        try:
+            await interaction.followup.send(content)
+            return True
+        except Exception:
+            await interaction.followup.send("❌ Cannot send message here.")
+            return False
+
+
+# ------------------- /bspam (FIXED VERSION) -------------------
 @tree.command(name="bspam", description="Send a message multiple times (context-safe)")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
@@ -36,14 +58,14 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
         return
 
-    if amount > 100:
-        await interaction.response.send_message("Max is 100 for stability.", ephemeral=True)
+    if amount > 5000:
+        await interaction.response.send_message("Max is 5000 for stability.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=True)
 
     await interaction.followup.send(
-        f"Sending {amount} messages...",
+        f"Processing {amount} messages...",
         ephemeral=True
     )
 
@@ -53,29 +75,62 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.followup.send("No channel available.", ephemeral=True)
         return
 
-    # ------------------- SEND LOOP (ALL CONTEXTS) -------------------
-    for i in range(amount):
-        try:
+    # ------------------- SERVER MODE -------------------
+    if isinstance(channel, discord.TextChannel):
+        for i in range(amount):
+            try:
+                await channel.send(message)
+                await asyncio.sleep(1.2)
+
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    "❌ No permission to send messages here.",
+                    ephemeral=True
+                )
+                return
+
+            except discord.HTTPException:
+                await asyncio.sleep(2)
+
+    # ------------------- DM / GC MODE -------------------
+    else:
+        for i in range(amount):
+            try:
+                await interaction.followup.send(message)
+                await asyncio.sleep(1.2)
+
+            except discord.HTTPException:
+                await asyncio.sleep(2)
+
+    await interaction.followup.send("Done.", ephemeral=True)
+
+    # ------------------- MAIN LOOP (FIXED LOGIC) -------------------
+
+    try:
+        for i in range(amount):
             await channel.send(message)
             await asyncio.sleep(1.2)
 
-        except discord.Forbidden:
-            await interaction.followup.send(
-                "❌ I don't have permission to send messages here.",
-                ephemeral=True
-            )
-            return
+    except discord.Forbidden:
+        await interaction.followup.send(
+            "❌ I don't have permission to send messages here.",
+            ephemeral=True
+        )
+        return
 
-        except discord.HTTPException:
-            # rate limit / temporary issue
-            await asyncio.sleep(2)
+    except discord.HTTPException:
+        await interaction.followup.send(
+            "❌ Rate limited or blocked by Discord.",
+            ephemeral=True
+        )
+        return
 
-        except Exception as e:
-            await interaction.followup.send(
-                f"Stopped early: {e}",
-                ephemeral=True
-            )
-            return
+    except Exception as e:
+        await interaction.followup.send(
+            f"Stopped early: {e}",
+            ephemeral=True
+        )
+        return
 
     await interaction.followup.send("Done.", ephemeral=True)
 
