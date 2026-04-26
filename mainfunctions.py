@@ -12,115 +12,26 @@ intents.messages = True
 intents.guilds = True
 
 # ------------------- BOT -------------------
-class MyBot(commands.Bot):
-    def __init__(self):
-        super().__init__(command_prefix="!", intents=intents)
-        self.tree = self
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
+
 
 # ------------------- EVENTS -------------------
 @bot.event
 async def on_ready():
-    # Try guild sync first for fast updates
-    try:
-        guild = discord.Object(id=YOUR_GUILD_ID)  # replace for testing
-        await tree.sync(guild=guild)
-    except:
-        await tree.sync()
-
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    print("Slash commands synced.")
 
-# ------------------- BSPAM -------------------
-async def _do_bspam(send_fn, amount: int, message: str):
-    if amount < 1:
-        await send_fn("Amount must be at least 1.")
-        return
-    if amount > 50000:
-        await send_fn("Maximum amount is 50K for safety.")
-        return
-
-    await send_fn(f"Starting spam of **{amount}** messages...")
-
-    for _ in range(amount):
-        try:
-            await send_fn(message)
-            await asyncio.sleep(0.7)
-        except discord.Forbidden:
-            await send_fn("No permission to send messages here!")
-            return
-        except Exception as e:
-            await send_fn(f"Error: {e}")
-            return
-
-    await send_fn("Finished spam.")
-
-@tree.command(name="bspam", description="Spam a message")
-async def slash_bspam(interaction: discord.Interaction, amount: int, message: str):
-    await interaction.response.defer()
-    await _do_bspam(interaction.followup.send, amount, message)
-
-@bot.command()
-async def bspam(ctx, amount: int, *, message: str):
-    await _do_bspam(ctx.send, amount, message)
-
-# ------------------- JOIN -------------------
-async def _do_join(send_fn, invite_link: str):
-    match = re.search(r'(?:discord\.gg/|discord\.com/invite/)([a-zA-Z0-9]+)', invite_link)
-
-    if not match:
-        await send_fn("Invalid invite link.")
-        return
-
-    code = match.group(1)
-
+    # 1. FAST SYNC (for testing in server)
     try:
-        invite = await bot.fetch_invite(code)
-        guild_name = invite.guild.name if invite.guild else "Unknown"
-
-        await send_fn(
-            f"Invite valid for: **{guild_name}**\n{invite.url}"
-        )
-
+        guild = discord.Object(id=GUILD_ID)
+        synced = await tree.sync(guild=guild)
+        print(f"Guild sync complete: {len(synced)} commands")
     except Exception as e:
-        await send_fn(f"Error: {e}")
+        print(f"Guild sync failed: {e}")
 
-@tree.command(name="join")
-async def slash_join(interaction: discord.Interaction, invite_link: str):
-    await interaction.response.defer()
-    await _do_join(interaction.followup.send, invite_link)
-
-@bot.command()
-async def join(ctx, invite_link: str):
-    await _do_join(ctx.send, invite_link)
-
-# ------------------- BOT INVITE -------------------
-async def _do_botinvite(send_fn):
-    perms = discord.Permissions(
-        send_messages=True,
-        read_messages=True,
-        embed_links=True,
-        attach_files=True,
-    )
-
-    url = discord.utils.oauth_url(bot.user.id, permissions=perms, scopes=["bot"])
-
-    await send_fn(f"Invite me here:\n{url}")
-
-@tree.command(name="botinvite")
-async def slash_botinvite(interaction: discord.Interaction):
-    await interaction.response.defer()
-    await _do_botinvite(interaction.followup.send)
-
-@bot.command()
-async def botinvite(ctx):
-    await _do_botinvite(ctx.send)
-
-# ------------------- RUN -------------------
-token = os.getenv("TOKEN")
-if not token:
-    print("Missing TOKEN")
-else:
-    bot.run(token)
+    # 2. GLOBAL SYNC (for DMs / long-term rollout)
+    try:
+        synced_global = await tree.sync()
+        print(f"Global sync complete: {len(synced_global)} commands")
+    except Exception as e:
+        print(f"Global sync failed: {e}")
