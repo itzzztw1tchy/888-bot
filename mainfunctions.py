@@ -45,15 +45,27 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
     await interaction.followup.send(f"Spamming {amount} messages...")
 
+    # ------------------- ✅ FIXED SAFE VERSION -------------------
+    channel = interaction.channel
+
+    if channel is None:
+        await interaction.followup.send("No channel found.")
+        return
+
     for i in range(amount):
         try:
-            await interaction.channel.send(message)
+            await channel.send(message)
             await asyncio.sleep(0.7)
-        except Exception as e:
-            await interaction.channel.send(f"Stopped at {i}: {e}")
+
+        except discord.Forbidden:
+            await interaction.followup.send("❌ I can't send messages in this channel.")
             return
 
-    await interaction.channel.send("Done.")
+        except Exception as e:
+            await interaction.followup.send(f"Stopped at {i}: {e}")
+            return
+
+    await channel.send("Done.")
 
 
 # ------------------- /join -------------------
