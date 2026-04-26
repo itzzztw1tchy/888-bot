@@ -21,6 +21,19 @@ async def on_ready():
     except Exception as e:
         print(f'Failed to sync commands: {e}')
 
+@bot.event
+async def on_message(message: discord.Message):
+    # Ignore messages sent by the bot itself
+    if message.author == bot.user:
+        return
+
+    # Respond to DMs
+    if isinstance(message.channel, discord.DMChannel):
+        await message.channel.send(f"Hey! I received your message. I'm a bot and may not monitor DMs actively, but I'm here!")
+    # Respond to guild (server) messages
+    else:
+        await message.channel.send(f"Hello, {message.author.mention}! I see your message.")
+
 # ------------------- /bspam COMMAND -------------------
 @tree.command(name="bspam", description="Spam a message a specified number of times (use responsibly!)")
 @app_commands.describe(
