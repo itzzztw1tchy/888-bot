@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 import asyncio
 import os
@@ -10,22 +9,23 @@ intents = discord.Intents.default()
 intents.message_content = True # If you need message content in the future
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-tree = bot.tree
 
 # ------------------- EVENTS -------------------
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    try:
-        synced = await tree.sync()
-        print(f'Synced {len(synced)} command(s) globally.')
-    except Exception as e:
-        print(f'Failed to sync commands: {e}')
 
 @bot.event
 async def on_message(message: discord.Message):
     # Ignore messages sent by the bot itself
     if message.author == bot.user:
+        return
+
+    # Process text commands first
+    await bot.process_commands(message)
+
+    # Only respond to non-command messages
+    if message.content.startswith(bot.command_prefix):
         return
 
     # Respond to DMs
@@ -35,44 +35,39 @@ async def on_message(message: discord.Message):
     else:
         await message.channel.send(f"Hello, {message.author.mention}! I see your message.")
 
-# ------------------- /bspam COMMAND -------------------
-@tree.command(name="bspam", description="Spam a message a specified number of times (use responsibly!)")
-@app_commands.describe(
-    amount="Number of times to spam (1-100 recommended max)",
-    message="The sentence/message to spam"
-)
-async def bspam(interaction: discord.Interaction, amount: int, message: str):
+# ------------------- !bspam COMMAND -------------------
+@bot.command(name="bspam", help="Spam a message a specified number of times. Usage: !bspam <amount> <message>")
+async def bspam(ctx: commands.Context, amount: int, *, message: str):
     if amount < 1:
-        await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
+        await ctx.send("Amount must be at least 1.")
         return
     if amount > 50000: # Hard limit to prevent abuse
-        await interaction.response.send_message("Maximum amount is 50K for safety.", ephemeral=True)
+        await ctx.send("Maximum amount is 50K for safety.")
         return
 
-    await interaction.response.send_message(f"Starting spam of **{amount}** messages...", ephemeral=True)
+    await ctx.send(f"Starting spam of **{amount}** messages...")
 
     for i in range(amount):
         try:
-            await interaction.channel.send(message)
+            await ctx.send(message)
             await asyncio.sleep(0.7) # Delay to reduce rate limit risk (adjust if needed)
         except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to send messages here!", ephemeral=True)
+            await ctx.send("I don't have permission to send messages here!")
             return
         except Exception as e:
             print(f"Error during spam: {e}")
-            await interaction.followup.send(f"Stopped early due to error: {e}", ephemeral=True)
+            await ctx.send(f"Stopped early due to error: {e}")
             return
 
-    await interaction.followup.send(f"Finished spamming **{amount}** times!", ephemeral=True)
+    await ctx.send(f"Finished spamming **{amount}** times!")
 
-# ------------------- /join COMMAND -------------------
-@tree.command(name="join", description="Validate a Discord invite and get instructions to add the bot")
-@app_commands.describe(invite_link="The full Discord invite link (e.g. https://discord.gg/abc123)")
-async def join(interaction: discord.Interaction, invite_link: str):
+# ------------------- !join COMMAND -------------------
+@bot.command(name="join", help="Validate a Discord invite and get instructions to add the bot. Usage: !join <invite_link>")
+async def join(ctx: commands.Context, invite_link: str):
     # Basic validation of invite format
     invite_code_match = re.search(r'(?:discord\.gg/|discord\.com/invite/)([a-zA-Z0-9]+)', invite_link)
     if not invite_code_match:
-        await interaction.response.send_message("Invalid invite link format. Please provide a valid Discord invite (e.g. https://discord.gg/abc123)", ephemeral=True)
+        await ctx.send("Invalid invite link format. Please provide a valid Discord invite (e.g. https://discord.gg/abc123)")
         return
 
     code = invite_code_match.group(1)
@@ -81,26 +76,25 @@ async def join(interaction: discord.Interaction, invite_link: str):
         # Try to fetch invite info
         invite = await bot.fetch_invite(code)
         guild_name = invite.guild.name if invite.guild else "Unknown Server"
-        
-        await interaction.response.send_message(
+
+        await ctx.send(
             f"✅ Valid invite found for server: **{guild_name}**\n\n"
             f"To add me to that server:\n"
             f"1. Open this link in your browser: {invite.url}\n"
             f"2. Make sure you have **Manage Server** permission.\n"
             f"3. Select the server and click **Authorize**.\n\n"
-            f"If the link is expired or invalid, ask a server admin for a new one.",
-            ephemeral=True
+            f"If the link is expired or invalid, ask a server admin for a new one."
         )
     except discord.NotFound:
-        await interaction.response.send_message("❌ Invite not found or expired.", ephemeral=True)
+        await ctx.send("❌ Invite not found or expired.")
     except discord.Forbidden:
-        await interaction.response.send_message("❌ I don't have permission to fetch invite details.", ephemeral=True)
+        await ctx.send("❌ I don't have permission to fetch invite details.")
     except Exception as e:
-        await interaction.response.send_message(f"❌ Error processing invite: {str(e)}", ephemeral=True)
+        await ctx.send(f"❌ Error processing invite: {str(e)}")
 
-# ------------------- OPTIONAL: Bot Invite Link Helper -------------------
-@tree.command(name="botinvite", description="Get the link to invite this bot to a server")
-async def botinvite(interaction: discord.Interaction):
+# ------------------- !botinvite COMMAND -------------------
+@bot.command(name="botinvite", help="Get the link to invite this bot to a server. Usage: !botinvite")
+async def botinvite(ctx: commands.Context):
     # Customize permissions here (add more as needed)
     permissions = discord.Permissions(
         send_messages=True,
@@ -109,12 +103,11 @@ async def botinvite(interaction: discord.Interaction):
         attach_files=True,
         # Add more if your bot needs them
     )
-    invite_url = discord.utils.oauth_url(bot.user.id, permissions=permissions, scopes=["bot", "applications.commands"])
-    
-    await interaction.response.send_message(
+    invite_url = discord.utils.oauth_url(bot.user.id, permissions=permissions, scopes=["bot"])
+
+    await ctx.send(
         f"**Invite me to a server using this link:**\n{invite_url}\n\n"
-        f"Make sure the person inviting has **Manage Server** permission!",
-        ephemeral=True
+        f"Make sure the person inviting has **Manage Server** permission!"
     )
 
 # ------------------- RUN THE BOT -------------------
