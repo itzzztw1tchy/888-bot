@@ -35,3 +35,18 @@ async def on_ready():
         print(f"Global sync complete: {len(synced_global)} commands")
     except Exception as e:
         print(f"Global sync failed: {e}")
+
+import os
+import traceback
+
+token = os.getenv("token")
+
+if not token:
+    print("❌ Missing TOKEN environment variable")
+else:
+    try:
+        print("🚀 Starting bot...")
+        bot.run(token)
+    except Exception:
+        print("🔥 Bot crashed on startup:")
+        traceback.print_exc()
