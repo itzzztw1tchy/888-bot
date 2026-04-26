@@ -8,7 +8,7 @@ import re
 intents = discord.Intents.default()
 intents.message_content = True
 
-# ------------------- BOT (KEEP ORIGINAL STYLE) -------------------
+# ------------------- BOT -------------------
 bot = discord.Client(intents=intents)
 tree = app_commands.CommandTree(bot)
 
@@ -40,30 +40,43 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Max is 500 for stability.")
         return
 
-    # IMPORTANT: prevents interaction timeout issues
     await interaction.response.defer()
-
     await interaction.followup.send(f"Spamming {amount} messages...")
 
-    # ------------------- ✅ FIXED SAFE VERSION -------------------
     channel = interaction.channel
 
     if channel is None:
-        await interaction.followup.send("No channel found.")
+        await interaction.followup.send("No channel available.")
         return
 
-    for i in range(amount):
-        try:
-            await channel.send(message)
-            await asyncio.sleep(0.7)
+    # ------------------- SAFE SEND LOGIC (FIX) -------------------
+    try:
+        # Always try at least one send
+        await channel.send(message)
 
-        except discord.Forbidden:
-            await interaction.followup.send("❌ I can't send messages in this channel.")
-            return
+    except discord.Forbidden:
+        await interaction.followup.send("❌ I can't send messages in this channel.")
+        return
 
-        except Exception as e:
-            await interaction.followup.send(f"Stopped at {i}: {e}")
-            return
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
+        return
+
+    # Only continue looping in safe environments (servers)
+    if isinstance(channel, discord.TextChannel):
+
+        for i in range(amount - 1):
+            try:
+                await channel.send(message)
+                await asyncio.sleep(0.7)
+
+            except discord.Forbidden:
+                await interaction.followup.send("❌ Stopped: missing permissions.")
+                return
+
+            except Exception as e:
+                await interaction.followup.send(f"Stopped at {i}: {e}")
+                return
 
     await channel.send("Done.")
 
