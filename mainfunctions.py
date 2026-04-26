@@ -29,17 +29,10 @@ async def on_ready():
 
 # ------------------- 🔥 UNIVERSAL SEND WRAPPER -------------------
 async def safe_send(interaction: discord.Interaction, channel, content: str):
-    """
-    Sends messages safely depending on context:
-    - Servers → channel.send
-    - DMs / GCs → interaction.followup.send fallback
-    """
-
     if channel is None:
         await interaction.followup.send("No channel available.")
         return False
 
-    # Server text channels
     if isinstance(channel, discord.TextChannel):
         try:
             await channel.send(content)
@@ -47,8 +40,6 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
         except discord.Forbidden:
             await interaction.followup.send("❌ I can't send messages in this channel.")
             return False
-
-    # DM / Group DM fallback
     else:
         try:
             await interaction.followup.send(content)
@@ -64,24 +55,33 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
     if amount < 1:
-        await interaction.response.send_message("Amount must be at least 1.")
+        await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
         return
 
     if amount > 500:
-        await interaction.response.send_message("Max is 500 for stability.")
+        await interaction.response.send_message("Max is 500 for stability.", ephemeral=True)
         return
 
-    await interaction.response.defer()
-    await interaction.followup.send(f"Spamming {amount} messages...")
+    # ------------------- ✅ EPHEMERAL START -------------------
+    await interaction.response.defer(ephemeral=True)
+
+    await interaction.followup.send(
+        f"Spamming {amount} messages...",
+        ephemeral=True
+    )
 
     channel = interaction.channel
+
+    if channel is None:
+        await interaction.followup.send("No channel available.", ephemeral=True)
+        return
 
     # ------------------- FIRST SEND -------------------
     ok = await safe_send(interaction, channel, message)
     if not ok:
         return
 
-    # ------------------- LOOP (ONLY SAFE IN SERVERS) -------------------
+    # ------------------- LOOP (servers only) -------------------
     if isinstance(channel, discord.TextChannel):
 
         for i in range(amount - 1):
@@ -89,18 +89,28 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
                 await channel.send(message)
                 await asyncio.sleep(1.5)
 
-            except discord.Forbidden:
-                await interaction.followup.send("❌ Stopped: missing permissions.")
-                return
-
             except discord.HTTPException:
                 await asyncio.sleep(3)
 
-            except Exception as e:
-                await interaction.followup.send(f"Stopped at {i}: {e}")
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    "❌ Stopped: missing permissions.",
+                    ephemeral=True
+                )
                 return
 
-    await safe_send(interaction, channel, "Done.")
+            except Exception as e:
+                await interaction.followup.send(
+                    f"Stopped at {i}: {e}",
+                    ephemeral=True
+                )
+                return
+
+    # ------------------- ✅ EPHEMERAL DONE -------------------
+    await interaction.followup.send(
+        "Done.",
+        ephemeral=True
+    )
 
 
 # ------------------- /join -------------------
