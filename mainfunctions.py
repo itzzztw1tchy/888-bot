@@ -27,6 +27,37 @@ async def on_ready():
         print(f'Failed to sync commands: {e}')
 
 
+# ------------------- 🔥 UNIVERSAL SEND WRAPPER -------------------
+async def safe_send(interaction: discord.Interaction, channel, content: str):
+    """
+    Sends messages safely depending on context:
+    - Servers → channel.send
+    - DMs / GCs → interaction.followup.send fallback
+    """
+
+    if channel is None:
+        await interaction.followup.send("No channel available.")
+        return False
+
+    # Server text channels
+    if isinstance(channel, discord.TextChannel):
+        try:
+            await channel.send(content)
+            return True
+        except discord.Forbidden:
+            await interaction.followup.send("❌ I can't send messages in this channel.")
+            return False
+
+    # DM / Group DM fallback
+    else:
+        try:
+            await interaction.followup.send(content)
+            return True
+        except Exception:
+            await interaction.followup.send("❌ Cannot send message here.")
+            return False
+
+
 # ------------------- /bspam -------------------
 @tree.command(name="bspam", description="Spam a message a specified number of times")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
@@ -45,32 +76,17 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
     channel = interaction.channel
 
-    if channel is None:
-        await interaction.followup.send("No channel available.")
+    # ------------------- FIRST SEND -------------------
+    ok = await safe_send(interaction, channel, message)
+    if not ok:
         return
 
-    # ------------------- SAFE MODE -------------------
-
-    # Always try first message
-    try:
-        await channel.send(message)
-
-    except discord.Forbidden:
-        await interaction.followup.send("❌ I can't send messages in this channel.")
-        return
-
-    except Exception as e:
-        await interaction.followup.send(f"❌ Error: {e}")
-        return
-
-    # ------------------- SERVER-ONLY LOOP (SAFE) -------------------
+    # ------------------- LOOP (ONLY SAFE IN SERVERS) -------------------
     if isinstance(channel, discord.TextChannel):
 
         for i in range(amount - 1):
             try:
                 await channel.send(message)
-
-                # FIX: slower delay to avoid DM/GC + rate limit issues
                 await asyncio.sleep(1.5)
 
             except discord.Forbidden:
@@ -78,15 +94,13 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
                 return
 
             except discord.HTTPException:
-                # FIX: handles Discord rate-limit bursts safely
                 await asyncio.sleep(3)
-                continue
 
             except Exception as e:
                 await interaction.followup.send(f"Stopped at {i}: {e}")
                 return
 
-    await channel.send("Done.")
+    await safe_send(interaction, channel, "Done.")
 
 
 # ------------------- /join -------------------
