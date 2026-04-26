@@ -96,7 +96,7 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
     else:
         for i in range(amount):
             try:
-                await interaction.followup.send(message)
+               await channel.send(message)
                 await asyncio.sleep(1.2)
 
             except discord.HTTPException:
