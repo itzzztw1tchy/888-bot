@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from discord.ext import commands
 import asyncio
 import os
 import re
@@ -8,8 +9,8 @@ import re
 intents = discord.Intents.default()
 intents.message_content = True # If you need message content in the future
 
-bot = discord.Client(intents=intents)
-tree = app_commands.CommandTree(bot)
+bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
 # ------------------- EVENTS -------------------
 @bot.event
