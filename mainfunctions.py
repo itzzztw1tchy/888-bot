@@ -18,7 +18,7 @@ tree = app_commands.CommandTree(bot)
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
 
-    # small delay prevents "0 commands" race condition on some hosts
+    # IMPORTANT: ensures commands are fully registered before syncing
     await asyncio.sleep(2)
 
     try:
@@ -30,6 +30,7 @@ async def on_ready():
 
 # ------------------- /bspam -------------------
 @tree.command(name="bspam", description="Spam a message a specified number of times")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
     if amount < 1:
@@ -50,6 +51,7 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
 # ------------------- /join -------------------
 @tree.command(name="join", description="Validate invite link")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def join(interaction: discord.Interaction, invite_link: str):
 
     match = re.search(r'(?:discord\.gg/|discord\.com/invite/)([a-zA-Z0-9]+)', invite_link)
@@ -74,6 +76,7 @@ async def join(interaction: discord.Interaction, invite_link: str):
 
 # ------------------- /botinvite -------------------
 @tree.command(name="botinvite", description="Get bot invite link")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def botinvite(interaction: discord.Interaction):
 
     perms = discord.Permissions(
