@@ -58,14 +58,14 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
         return
 
-    if amount > 5000:
-        await interaction.response.send_message("Max is 5000 for stability.", ephemeral=True)
+    if amount > 100:
+        await interaction.response.send_message("Max is 100 for stability.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=True)
 
     await interaction.followup.send(
-        f"Processing {amount} messages...",
+        f"Sending 5 Messages.",
         ephemeral=True
     )
 
