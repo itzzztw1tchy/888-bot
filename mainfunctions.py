@@ -50,7 +50,7 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
 
 
 # ------------------- /bspam (FIXED VERSION) -------------------
-@tree.command(name="bspam", description="Send a message multiple times")
+@tree.command(name="bspam", description="Send a message multiple times (context-safe)")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
@@ -58,49 +58,51 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
         return
 
-    if amount > 50:
-        await interaction.response.send_message("Max is 50.", ephemeral=True)
+    if amount > 5000:
+        await interaction.response.send_message("Max is 5000 for stability.", ephemeral=True)
         return
 
-    await interaction.response.send_message(
-        f"Starting spam of {amount} messages...",
+    await interaction.response.defer(ephemeral=True)
+
+    await interaction.followup.send(
+        f"Processing {amount} messages...",
         ephemeral=True
     )
 
     channel = interaction.channel
 
     if channel is None:
-        await interaction.followup.send("No channel found.", ephemeral=True)
+        await interaction.followup.send("No channel available.", ephemeral=True)
         return
 
-    async def spam_task():
-        try:
-            for i in range(amount):
+    # ------------------- SERVER MODE -------------------
+    if isinstance(channel, discord.TextChannel):
+        for i in range(amount):
+            try:
                 await channel.send(message)
                 await asyncio.sleep(1.2)
 
-            await interaction.followup.send("Done.", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    "❌ No permission to send messages here.",
+                    ephemeral=True
+                )
+                return
 
-        except discord.Forbidden:
-            await interaction.followup.send(
-                "❌ Missing permission to send messages here.",
-                ephemeral=True
-            )
+            except discord.HTTPException:
+                await asyncio.sleep(2)
 
-        except discord.HTTPException:
-            await interaction.followup.send(
-                "❌ Rate limited by Discord.",
-                ephemeral=True
-            )
+    # ------------------- DM / GC MODE -------------------
+    else:
+        for i in range(amount):
+            try:
+                await interaction.followup.send(message)
+                await asyncio.sleep(1.2)
 
-        except Exception as e:
-            await interaction.followup.send(
-                f"❌ Error: {e}",
-                ephemeral=True
-            )
+            except discord.HTTPException:
+                await asyncio.sleep(2)
 
-    # run in background so interaction doesn't stall
-    asyncio.create_task(spam_task())
+    await interaction.followup.send("Done.", ephemeral=True)
 
     # ------------------- MAIN LOOP (FIXED LOGIC) -------------------
 
