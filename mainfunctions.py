@@ -105,8 +105,8 @@ async def botinvite(interaction: discord.Interaction):
 
 # ------------------- RUN THE BOT -------------------
 if __name__ == "__main__":
-    token = os.getenv("TOKEN")
+    token = os.getenv("discordtoken")
     if not token:
-        print("ERROR: No TOKEN found in Replit Secrets!")
+        print("ERROR: No TOKEN found in Secrets!")
     else:
         bot.run(token)
