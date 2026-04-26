@@ -8,7 +8,7 @@ import re
 intents = discord.Intents.default()
 intents.message_content = True
 
-# ------------------- BOT -------------------
+# ------------------- BOT (KEEP ORIGINAL STYLE) -------------------
 bot = discord.Client(intents=intents)
 tree = app_commands.CommandTree(bot)
 
@@ -36,16 +36,22 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Amount must be at least 1.")
         return
 
-    if amount > 50000:
-        await interaction.response.send_message("Max is 50K.")
+    if amount > 500:
+        await interaction.response.send_message("Max is 500 for stability.")
         return
 
-    # initial response (visible in chat)
-    await interaction.response.send_message(f"Starting spam of {amount} messages...")
+    # IMPORTANT: prevents interaction timeout issues
+    await interaction.response.defer()
 
-    for _ in range(amount):
-        await interaction.channel.send(message)
-        await asyncio.sleep(0.7)
+    await interaction.followup.send(f"Spamming {amount} messages...")
+
+    for i in range(amount):
+        try:
+            await interaction.channel.send(message)
+            await asyncio.sleep(0.7)
+        except Exception as e:
+            await interaction.channel.send(f"Stopped at {i}: {e}")
+            return
 
     await interaction.channel.send("Done.")
 
