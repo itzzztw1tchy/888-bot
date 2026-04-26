@@ -49,9 +49,10 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.followup.send("No channel available.")
         return
 
-    # ------------------- SAFE SEND LOGIC (FIX) -------------------
+    # ------------------- SAFE MODE -------------------
+
+    # Always try first message
     try:
-        # Always try at least one send
         await channel.send(message)
 
     except discord.Forbidden:
@@ -62,17 +63,24 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.followup.send(f"❌ Error: {e}")
         return
 
-    # Only continue looping in safe environments (servers)
+    # ------------------- SERVER-ONLY LOOP (SAFE) -------------------
     if isinstance(channel, discord.TextChannel):
 
         for i in range(amount - 1):
             try:
                 await channel.send(message)
-                await asyncio.sleep(0.7)
+
+                # FIX: slower delay to avoid DM/GC + rate limit issues
+                await asyncio.sleep(1.5)
 
             except discord.Forbidden:
                 await interaction.followup.send("❌ Stopped: missing permissions.")
                 return
+
+            except discord.HTTPException:
+                # FIX: handles Discord rate-limit bursts safely
+                await asyncio.sleep(3)
+                continue
 
             except Exception as e:
                 await interaction.followup.send(f"Stopped at {i}: {e}")
