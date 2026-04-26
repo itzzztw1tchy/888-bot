@@ -65,7 +65,7 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
     await interaction.response.defer(ephemeral=True)
 
     await interaction.followup.send(
-        f"Sending 5 Messages.",
+        f"Sending (amount) Messages.",
         ephemeral=True
     )
 
