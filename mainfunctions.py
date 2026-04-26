@@ -38,7 +38,7 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
             await channel.send(content)
             return True
         except discord.Forbidden:
-            await interaction.followup.send("❌ I can't send messages in this channel.")
+            await interaction.followup.send(" ")
             return False
     else:
         try:
