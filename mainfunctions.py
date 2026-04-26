@@ -76,7 +76,7 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         return
 
     # ------------------- SERVER MODE -------------------
-    if isinstance(channel, discord.TextChannel):
+    if isinstance(channel, discord.Channel):
         for i in range(amount):
             try:
                 await channel.send(message)
