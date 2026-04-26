@@ -10,39 +10,28 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
 intents.guilds = True
-intents.dm_messages = True
 
 # ------------------- BOT -------------------
+class MyBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents)
+        self.tree = self
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
 # ------------------- EVENTS -------------------
 @bot.event
 async def on_ready():
-    await tree.sync()
+    # Try guild sync first for fast updates
+    try:
+        guild = discord.Object(id=YOUR_GUILD_ID)  # replace for testing
+        await tree.sync(guild=guild)
+    except:
+        await tree.sync()
+
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print("Slash commands synced.")
-
-@bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot:
-        return
-
-    # Always allow commands to work
-    await bot.process_commands(message)
-
-    # OPTIONAL: prevent spam in servers (recommended)
-    if message.content.startswith(bot.command_prefix):
-        return
-
-    if isinstance(message.channel, discord.DMChannel):
-        await message.channel.send(
-            "Hey! I received your DM. I may not actively monitor messages, but I got it 👍"
-        )
-    else:
-        await message.channel.send(
-            f"Hello {message.author.mention}, I see your message!"
-        )
 
 # ------------------- BSPAM -------------------
 async def _do_bspam(send_fn, amount: int, message: str):
@@ -55,7 +44,7 @@ async def _do_bspam(send_fn, amount: int, message: str):
 
     await send_fn(f"Starting spam of **{amount}** messages...")
 
-    for i in range(amount):
+    for _ in range(amount):
         try:
             await send_fn(message)
             await asyncio.sleep(0.7)
@@ -92,8 +81,7 @@ async def _do_join(send_fn, invite_link: str):
         guild_name = invite.guild.name if invite.guild else "Unknown"
 
         await send_fn(
-            f"Invite valid for: **{guild_name}**\n"
-            f"{invite.url}"
+            f"Invite valid for: **{guild_name}**\n{invite.url}"
         )
 
     except Exception as e:
