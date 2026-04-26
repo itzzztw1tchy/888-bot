@@ -49,7 +49,7 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
             return False
 
 
-# ------------------- /bspam -------------------
+# ------------------- /bspam (FIXED VERSION) -------------------
 @tree.command(name="bspam", description="Spam a message a specified number of times")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
@@ -62,9 +62,7 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Max is 500 for stability.", ephemeral=True)
         return
 
-    # ------------------- ✅ EPHEMERAL START -------------------
     await interaction.response.defer(ephemeral=True)
-
     await interaction.followup.send(
         f"Spamming {amount} messages...",
         ephemeral=True
@@ -76,41 +74,35 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.followup.send("No channel available.", ephemeral=True)
         return
 
-    # ------------------- FIRST SEND -------------------
-    ok = await safe_send(interaction, channel, message)
-    if not ok:
+    # ------------------- MAIN LOOP (FIXED LOGIC) -------------------
+
+    try:
+        for i in range(amount):
+            await channel.send(message)
+            await asyncio.sleep(1.2)
+
+    except discord.Forbidden:
+        await interaction.followup.send(
+            "❌ I don't have permission to send messages here.",
+            ephemeral=True
+        )
         return
 
-    # ------------------- LOOP (servers only) -------------------
-    if isinstance(channel, discord.TextChannel):
+    except discord.HTTPException:
+        await interaction.followup.send(
+            "❌ Rate limited or blocked by Discord.",
+            ephemeral=True
+        )
+        return
 
-        for i in range(amount - 1):
-            try:
-                await channel.send(message)
-                await asyncio.sleep(1.5)
+    except Exception as e:
+        await interaction.followup.send(
+            f"Stopped early: {e}",
+            ephemeral=True
+        )
+        return
 
-            except discord.HTTPException:
-                await asyncio.sleep(3)
-
-            except discord.Forbidden:
-                await interaction.followup.send(
-                    "❌ Stopped: missing permissions.",
-                    ephemeral=True
-                )
-                return
-
-            except Exception as e:
-                await interaction.followup.send(
-                    f"Stopped at {i}: {e}",
-                    ephemeral=True
-                )
-                return
-
-    # ------------------- ✅ EPHEMERAL DONE -------------------
-    await interaction.followup.send(
-        "Done.",
-        ephemeral=True
-    )
+    await interaction.followup.send("Done.", ephemeral=True)
 
 
 # ------------------- /join -------------------
