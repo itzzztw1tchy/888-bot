@@ -64,40 +64,49 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
     await interaction.response.defer(ephemeral=True)
 
-    channel = interaction.channel
-
-    if channel is None:
-        await interaction.followup.send("No channel available.", ephemeral=True)
-        return
-
     await interaction.followup.send(
-        f"Starting send of {amount} messages...",
+        f"Starting {amount} messages...",
         ephemeral=True
     )
 
-    # ------------------- SERVER / DM / GC SAFE MODE -------------------
+    channel = interaction.channel
 
+    if channel is None:
+        await interaction.followup.send("No channel found.", ephemeral=True)
+        return
+
+    # ------------------- SAFE RESOLUTION -------------------
     try:
+        send_func = getattr(channel, "send", None)
+
+        if send_func is None:
+            await interaction.followup.send(
+                "❌ This channel type cannot receive messages from bots.",
+                ephemeral=True
+            )
+            return
+
         for i in range(amount):
-
-            # Always prefer channel.send if possible
-            if hasattr(channel, "send"):
-                await channel.send(message)
-            else:
-                await interaction.followup.send(message)
-
+            await send_func(message)
             await asyncio.sleep(1.2)
 
     except discord.Forbidden:
         await interaction.followup.send(
-            "❌ Missing permission to send messages here.",
+            "❌ Bot lacks Send Messages permission in this channel.",
             ephemeral=True
         )
         return
 
     except discord.HTTPException:
         await interaction.followup.send(
-            "❌ Rate limited by Discord.",
+            "❌ Rate limited or blocked by Discord.",
+            ephemeral=True
+        )
+        return
+
+    except Exception as e:
+        await interaction.followup.send(
+            f"❌ Unexpected error: {e}",
             ephemeral=True
         )
         return
