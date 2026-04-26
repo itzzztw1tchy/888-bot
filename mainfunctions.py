@@ -50,7 +50,7 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
 
 
 # ------------------- /bspam (FIXED VERSION) -------------------
-@tree.command(name="bspam", description="Send a message multiple times (context-safe)")
+@tree.command(name="bspam", description="Send a message multiple times")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
@@ -58,16 +58,11 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
         return
 
-    if amount > 5000:
-        await interaction.response.send_message("Max is 5000 for stability.", ephemeral=True)
+    if amount > 50:
+        await interaction.response.send_message("Max is 50 for stability.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=True)
-
-    await interaction.followup.send(
-        f"Processing {amount} messages...",
-        ephemeral=True
-    )
 
     channel = interaction.channel
 
@@ -75,32 +70,37 @@ async def bspam(interaction: discord.Interaction, amount: int, message: str):
         await interaction.followup.send("No channel available.", ephemeral=True)
         return
 
-    # ------------------- SERVER MODE -------------------
-    if isinstance(channel, discord.TextChannel):
+    await interaction.followup.send(
+        f"Starting send of {amount} messages...",
+        ephemeral=True
+    )
+
+    # ------------------- SERVER / DM / GC SAFE MODE -------------------
+
+    try:
         for i in range(amount):
-            try:
+
+            # Always prefer channel.send if possible
+            if hasattr(channel, "send"):
                 await channel.send(message)
-                await asyncio.sleep(1.2)
-
-            except discord.Forbidden:
-                await interaction.followup.send(
-                    "❌ No permission to send messages here.",
-                    ephemeral=True
-                )
-                return
-
-            except discord.HTTPException:
-                await asyncio.sleep(2)
-
-    # ------------------- DM / GC MODE -------------------
-    else:
-        for i in range(amount):
-            try:
+            else:
                 await interaction.followup.send(message)
-                await asyncio.sleep(1.2)
 
-            except discord.HTTPException:
-                await asyncio.sleep(2)
+            await asyncio.sleep(1.2)
+
+    except discord.Forbidden:
+        await interaction.followup.send(
+            "❌ Missing permission to send messages here.",
+            ephemeral=True
+        )
+        return
+
+    except discord.HTTPException:
+        await interaction.followup.send(
+            "❌ Rate limited by Discord.",
+            ephemeral=True
+        )
+        return
 
     await interaction.followup.send("Done.", ephemeral=True)
 
