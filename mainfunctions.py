@@ -39,7 +39,7 @@ async def on_ready():
 import os
 import traceback
 
-token = os.getenv("token")
+token = os.getenv("TOKEN")
 
 if not token:
     print("❌ Missing TOKEN environment variable")
