@@ -8,7 +8,7 @@ import re
 intents = discord.Intents.default()
 intents.message_content = True
 
-# ------------------- BOT (KEEP ORIGINAL STYLE) -------------------
+# ------------------- BOT -------------------
 bot = discord.Client(intents=intents)
 tree = app_commands.CommandTree(bot)
 
@@ -18,7 +18,6 @@ tree = app_commands.CommandTree(bot)
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
 
-    # IMPORTANT: ensures commands are fully registered before syncing
     await asyncio.sleep(2)
 
     try:
@@ -34,19 +33,21 @@ async def on_ready():
 async def bspam(interaction: discord.Interaction, amount: int, message: str):
 
     if amount < 1:
-        await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
-        return
-    if amount > 50000:
-        await interaction.response.send_message("Max is 50K.", ephemeral=True)
+        await interaction.response.send_message("Amount must be at least 1.")
         return
 
-    await interaction.response.send_message(f"Spamming {amount} messages...", ephemeral=True)
+    if amount > 50000:
+        await interaction.response.send_message("Max is 50K.")
+        return
+
+    # initial response (visible in chat)
+    await interaction.response.send_message(f"Starting spam of {amount} messages...")
 
     for _ in range(amount):
         await interaction.channel.send(message)
         await asyncio.sleep(0.7)
 
-    await interaction.followup.send("Done.", ephemeral=True)
+    await interaction.channel.send("Done.")
 
 
 # ------------------- /join -------------------
@@ -57,7 +58,7 @@ async def join(interaction: discord.Interaction, invite_link: str):
     match = re.search(r'(?:discord\.gg/|discord\.com/invite/)([a-zA-Z0-9]+)', invite_link)
 
     if not match:
-        await interaction.response.send_message("Invalid invite.", ephemeral=True)
+        await interaction.response.send_message("Invalid invite.")
         return
 
     code = match.group(1)
@@ -66,12 +67,11 @@ async def join(interaction: discord.Interaction, invite_link: str):
         invite = await bot.fetch_invite(code)
 
         await interaction.response.send_message(
-            f"Valid invite: {invite.url}",
-            ephemeral=True
+            f"Valid invite: {invite.url}"
         )
 
     except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
+        await interaction.response.send_message(f"Error: {e}")
 
 
 # ------------------- /botinvite -------------------
@@ -91,7 +91,7 @@ async def botinvite(interaction: discord.Interaction):
         scopes=["bot", "applications.commands"]
     )
 
-    await interaction.response.send_message(url, ephemeral=True)
+    await interaction.response.send_message(url)
 
 
 # ------------------- RUN -------------------
