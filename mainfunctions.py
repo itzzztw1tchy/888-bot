@@ -8,7 +8,11 @@ import re
 # Intents setup
 intents = discord.Intents.default()
 intents.message_content = True
+intents.messages = True
+intents.guilds = True
+intents.dm_messages = True  # important for DMs
 
+bot = commands.Bot(command_prefix="!", intents=intents)
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
