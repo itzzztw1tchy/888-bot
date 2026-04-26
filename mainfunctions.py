@@ -40,7 +40,7 @@ async def safe_send(interaction: discord.Interaction, channel, content: str):
         except discord.Forbidden:
             await interaction.followup.send("error")
             return False
-    else:
+   if else:
         try:
             await interaction.followup.send(content)
             return True
